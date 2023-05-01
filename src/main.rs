@@ -1,7 +1,7 @@
-use crate::editor::Editor;
+use editor::Editor;
 use crossterm::{execute, terminal};
 
-pub mod editor;
+mod editor;
 
 struct CleanUp;
 
