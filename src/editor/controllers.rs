@@ -154,21 +154,48 @@ impl Controllers {
             .insert_char(self.cursor_ctrlr.cursor_x, ch);
         /*
             have text wrap if cursor_x == editor_width
-            insert empty row, set cursor_x = 0, and cursor_y += 1 
+            insert empty row, set cursor_x = 0, and cursor_y += 1
+            last_word = last subtr without space
+            if ch != ' ' and len(last_word) < editor_width: move word to the new line  
         */
         if self.cursor_ctrlr.cursor_x >= self.cursor_ctrlr.editor_width - 1 {
-            self.file_ctrlr
-                .insert_row(
-                    self.cursor_ctrlr.cursor_y + 1, 
-                    String::new()
-                );
-            self.cursor_ctrlr.cursor_x = 0;
-            self.cursor_ctrlr.cursor_y += 1;
-            self.dirty += 1;
+            match ch {
+                ' ' => {
+                    self.file_ctrlr.insert_row(
+                        self.cursor_ctrlr.cursor_y + 1, 
+                        String::new()
+                    );
+                    self.cursor_ctrlr.cursor_x = 0;
+                    self.cursor_ctrlr.cursor_y += 1;  
+                },
+                _ => {
+                    let curr_row = self.file_ctrlr
+                        .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
+                    let mut trunc_len = 0;
+                    let new_row_content = match curr_row.content.split_whitespace().last() {
+                        None => String::new(),
+                        Some(this) => {
+                            trunc_len = curr_row.len() - this.len();
+                            this.to_string()
+                        }
+                    };
+                    if trunc_len > 0 {
+                        curr_row.content.truncate(trunc_len);
+                        FileController::render_row(curr_row);
+                    }
+                    self.file_ctrlr.insert_row(
+                        self.cursor_ctrlr.cursor_y + 1, 
+                        new_row_content
+                    );
+                    self.cursor_ctrlr.cursor_y += 1;
+                    self.cursor_ctrlr.cursor_x = self.file_ctrlr
+                        .get_editor_row(self.cursor_ctrlr.cursor_y).content.len();
+                }
+            }
         } else {
             self.cursor_ctrlr.cursor_x += 1;
-            self.dirty += 1;
         }
+        self.dirty += 1;
     }
 
     pub fn insert_newline(&mut self) {
