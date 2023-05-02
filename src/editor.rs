@@ -58,6 +58,7 @@ macro_rules! prompt {
     }};
 }
 
+#[derive(Default)]
 struct InputReader;
 
 impl InputReader {
@@ -72,15 +73,10 @@ impl InputReader {
     }
 }
 
+#[derive(Default)]
 pub struct Editor {
     reader: InputReader,
     ctrlrs: Controllers
-}
-
-impl Default for Editor {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Editor {
@@ -105,7 +101,7 @@ impl Editor {
             },
             KeyEvent {
                 code: KeyCode::Char('s'),
-                modifiers: event::KeyModifiers::CONTROL,
+                modifiers: event::KeyModifiers::CONTROL | event::KeyModifiers::ALT,
                 ..
             } => {
                 if !self.ctrlrs.loaded_from_file() {

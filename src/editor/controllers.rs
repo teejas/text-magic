@@ -14,6 +14,7 @@ mod writing;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_QUIT_ATTEMPTS: u64 = 3;
 
+#[derive(Default)]
 pub struct Controllers {
     writing_ctrlr: WritingController,
     cursor_ctrlr: CursorController,
@@ -21,12 +22,6 @@ pub struct Controllers {
     status_msg: StatusMessage,
     dirty: u64,
     quit_attempts: u64,
-}
-
-impl Default for Controllers {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Controllers {
@@ -175,8 +170,12 @@ impl Controllers {
                     let new_row_content = match curr_row.content.split_whitespace().last() {
                         None => String::new(),
                         Some(this) => {
-                            trunc_len = curr_row.len() - this.len();
-                            this.to_string()
+                            if this.len() < curr_row.content.len() {
+                                trunc_len = curr_row.len() - this.len();
+                                this.to_string()
+                            } else { // no whitespace in row
+                                String::new()
+                            }
                         }
                     };
                     if trunc_len > 0 {
