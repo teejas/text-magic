@@ -27,7 +27,7 @@ impl CursorController {
             cursor_y: 0,
             editor_height: win_size.1,
             editor_width: if win_size.0 > 100 { // if editor is too wide, divide in half
-                win_size.0 / 2 
+                win_size.0 / 2 + 1
             } else { 
                 win_size.0 
             },
@@ -70,9 +70,7 @@ impl CursorController {
 
     pub fn move_cursor(&mut self, direction: KeyCode, editor_rows: &FileController) {
         match direction {
-            KeyCode::Up => {
-                if self.cursor_y != 0 { self.cursor_y -= 1 }
-            }
+            KeyCode::Up => if self.cursor_y != 0 { self.cursor_y -= 1 },
             KeyCode::Left => {
                 if self.cursor_x != 0 { 
                     self.cursor_x -= 1 
@@ -81,9 +79,7 @@ impl CursorController {
                     self.cursor_x = editor_rows.get_editor_row(self.cursor_y).len();
                 }
             }
-            KeyCode::Down => {
-                if self.cursor_y < editor_rows.count_rows() { self.cursor_y += 1 }
-            }
+            KeyCode::Down => if self.cursor_y < editor_rows.count_rows() { self.cursor_y += 1 },
             KeyCode::Right => {
                 if self.cursor_y < editor_rows.count_rows() {
                     if self.cursor_x < editor_rows.get_editor_row(self.cursor_y).len() {

@@ -93,6 +93,9 @@ impl Editor {
                 code: KeyCode::Char('c'),
                 modifiers: event::KeyModifiers::CONTROL,
                 ..
+            } | KeyEvent {
+                code: KeyCode::Char('ç'),
+                ..
             } => {
                 if !self.ctrlrs.attempt_to_quit(){
                     return Ok(true)
@@ -103,7 +106,10 @@ impl Editor {
                 code: KeyCode::Char('s'),
                 modifiers: event::KeyModifiers::CONTROL | event::KeyModifiers::ALT,
                 ..
-            } => {
+            } | KeyEvent {
+                code: KeyCode::Char('ß'),
+                ..
+            }=> {
                 if !self.ctrlrs.loaded_from_file() {
                     let filepath = prompt!(&mut self.ctrlrs, "Save as: {}").map(|it| it.into());
                     if filepath == None {
@@ -118,13 +124,13 @@ impl Editor {
             },
             KeyEvent {
                 code: key @ (KeyCode::Backspace | KeyCode::Delete),
-                modifiers: event::KeyModifiers::NONE,
+                modifiers: shift @ (KeyModifiers::NONE | KeyModifiers::SHIFT),
                 ..
             } => {
                 if key == KeyCode::Delete {
-                    self.ctrlrs.move_cursor(KeyCode::Right);
+                    self.ctrlrs.move_cursor(KeyCode::Right, shift);
                 }
-                self.ctrlrs.delete_char();
+                self.ctrlrs.delete_char(shift);
             },
             KeyEvent {
                 code: KeyCode::Enter,
@@ -142,9 +148,12 @@ impl Editor {
                     | KeyCode::PageUp
                     | KeyCode::PageDown
                 ),
-                modifiers: event::KeyModifiers::NONE,
+                modifiers: shift @ (
+                    event::KeyModifiers::NONE 
+                    | event::KeyModifiers::SHIFT 
+                ),
                 ..
-            } => self.ctrlrs.move_cursor(direction),
+            } => self.ctrlrs.move_cursor(direction, shift),
             KeyEvent {
                 code: code @ (KeyCode::Char(..) | KeyCode::Tab),
                 modifiers: event::KeyModifiers::NONE | event::KeyModifiers::SHIFT,

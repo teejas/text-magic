@@ -1,6 +1,6 @@
 use position::CursorController;
 use writing::{StatusMessage, WritingController};
-use file::FileController;
+use file::{FileController, Row};
 use std::{cmp, io};
 use std::io::Write;
 use crossterm::event::*;
@@ -213,32 +213,57 @@ impl Controllers {
         self.dirty += 1
     }
 
-    pub fn delete_char(&mut self) {
+    pub fn delete_char(&mut self, shift: KeyModifiers) {
         if self.cursor_ctrlr.cursor_y == self.file_ctrlr.count_rows()
             || (self.cursor_ctrlr.cursor_x == 0 && self.cursor_ctrlr.cursor_y == 0) {
             return
         }
-        let row = self
-            .file_ctrlr
-            .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
-        if self.cursor_ctrlr.cursor_x > 0 {
-            self.cursor_ctrlr.cursor_x -= 1;
-            row.delete_char(self.cursor_ctrlr.cursor_x);
-            self.dirty += 1;
-        } else {
-            let len_prev_row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y - 1).len();
-            self.file_ctrlr.join_adjacent_rows(self.cursor_ctrlr.cursor_y);
-            self.cursor_ctrlr.cursor_x = len_prev_row;
-            self.cursor_ctrlr.cursor_y -= 1;
+        match shift {
+            KeyModifiers::SHIFT => {
+                self.delete_word()
+            }
+            _ => {
+                let row = self
+                    .file_ctrlr
+                    .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
+                if self.cursor_ctrlr.cursor_x > 0 {
+                    self.cursor_ctrlr.cursor_x -= 1;
+                    row.delete_char(self.cursor_ctrlr.cursor_x);
+                    self.dirty += 1;
+                } else {
+                    let len_prev_row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y - 1).len();
+                    self.file_ctrlr.join_adjacent_rows(self.cursor_ctrlr.cursor_y);
+                    self.cursor_ctrlr.cursor_x = len_prev_row;
+                    self.cursor_ctrlr.cursor_y -= 1;
+                }
+            }
         }
     }
 
-    pub fn move_cursor(&mut self, key: KeyCode) {
+    fn delete_word(&mut self) {
+        let curr_row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y);
+        let move_len = if self.cursor_ctrlr.cursor_x <= 0 {
+            1
+        } else {
+            curr_row.content[0..self.cursor_ctrlr.cursor_x]
+                .split_whitespace()
+                .last()
+                .unwrap()
+                .len() + 1 // add one to put cursor in the next whitepsace
+        };
+        for _ in 0..move_len {
+            self.delete_char(KeyModifiers::NONE)
+        };
+    }
+
+    pub fn move_cursor(&mut self, key: KeyCode, shift: KeyModifiers) {
         match key {
             KeyCode::PageUp => {
                 self.cursor_ctrlr.cursor_y = self.cursor_ctrlr.row_offset;
                 for _ in 0..self.cursor_ctrlr.editor_height {
-                    self.cursor_ctrlr.move_cursor(KeyCode::Up, &self.file_ctrlr);
+                    self.cursor_ctrlr.move_cursor(
+                        KeyCode::Up, &self.file_ctrlr
+                    );
                 }
             }
             KeyCode::PageDown => {
@@ -247,11 +272,56 @@ impl Controllers {
                     self.file_ctrlr.count_rows()
                 );
                 for _ in 0..self.cursor_ctrlr.editor_height {
-                    self.cursor_ctrlr.move_cursor(KeyCode::Down, &self.file_ctrlr);
+                    self.cursor_ctrlr.move_cursor(
+                        KeyCode::Down, &self.file_ctrlr
+                    );
                 }
             }
             _ => {
-                self.cursor_ctrlr.move_cursor(key, &self.file_ctrlr);
+                let (cursor_x, cursor_y) = self.cursor_ctrlr.pos();
+                if cursor_y >= self.file_ctrlr.count_rows() || shift != KeyModifiers::SHIFT {
+                    self.cursor_ctrlr.move_cursor(
+                        key, &self.file_ctrlr
+                    );
+                    return
+                }
+                match shift {
+                    KeyModifiers::SHIFT => {
+                        let curr_row: &Row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y);
+                        let move_len = match key {
+                            KeyCode::Up | KeyCode::Down => 5,
+                            KeyCode::Right => {
+                                if cursor_y >= self.file_ctrlr.count_rows() || cursor_x >= curr_row.content.len() {
+                                    1
+                                } else {
+                                    curr_row.content[cursor_x..]
+                                        .split_whitespace()
+                                        .nth(0)
+                                        .unwrap()
+                                        .len() + 1 // add one to put cursor in the next whitepsace
+                                }
+                            }
+                            KeyCode::Left => {
+                                if cursor_y >= self.file_ctrlr.count_rows() || cursor_x <= 0 {
+                                    1
+                                } else {
+                                    curr_row.content[0..cursor_x]
+                                        .split_whitespace()
+                                        .last()
+                                        .unwrap()
+                                        .len() + 1 // add one to put cursor in the next whitepsace
+                                }
+                            }
+                            _ => 1
+                        };
+                        for _ in 0..move_len {
+                            self.cursor_ctrlr.move_cursor(
+                                key, &self.file_ctrlr
+                            );
+                        }
+                    },
+                    _ => {}
+                }
             }
         }
     }
