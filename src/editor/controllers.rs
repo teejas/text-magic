@@ -153,56 +153,44 @@ impl Controllers {
                 self.cursor_ctrlr.cursor_y,
                 String::new()
             );
-            self.dirty += 1;
-        }
-        self.file_ctrlr
-            .get_editor_row_mut(self.cursor_ctrlr.cursor_y)
-            .insert_char(self.cursor_ctrlr.cursor_x, ch);
-        /*
-            have text wrap if cursor_x == editor_width
-            insert empty row, set cursor_x = 0, and cursor_y += 1
-            last_word = last subtr without space
-            if ch != ' ' and len(last_word) < editor_width: move word to the new line  
-        */
-        if self.cursor_ctrlr.cursor_x >= self.cursor_ctrlr.editor_width - 1 {
-            match ch {
-                ' ' => {
-                    self.file_ctrlr.insert_row(
-                        self.cursor_ctrlr.cursor_y + 1, 
-                        String::new()
-                    );
-                    self.cursor_ctrlr.cursor_x = 0;
-                    self.cursor_ctrlr.cursor_y += 1;  
-                },
-                _ => {
-                    let curr_row = self.file_ctrlr
-                        .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
-                    let mut trunc_len = 0;
-                    let new_row_content = match curr_row.content.split_whitespace().last() {
-                        None => String::new(),
-                        Some(this) => {
-                            if this.len() < curr_row.content.len() {
-                                trunc_len = curr_row.len() - this.len();
-                                this.to_string()
-                            } else { // no whitespace in row
-                                String::new()
-                            }
+            self.file_ctrlr
+                .get_editor_row_mut(self.cursor_ctrlr.cursor_y)
+                .insert_char(self.cursor_ctrlr.cursor_x, ch);
+            self.cursor_ctrlr.cursor_x += 1;
+        } else if self.cursor_ctrlr.cursor_x >= self.cursor_ctrlr.editor_width - 1 {
+            let curr_row = self.file_ctrlr
+                .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
+            curr_row.insert_char(self.cursor_ctrlr.cursor_x, ch);
+            let mut trunc_len = 0;
+            let new_row_content = if ch == ' ' {
+                String::new()
+            } else {
+                match curr_row.content.split_whitespace().last() {
+                    None => String::new(),
+                    Some(this) => {
+                        if this.len() < curr_row.len() {
+                            trunc_len = curr_row.len() - this.len();
+                            this.to_string()
+                        } else { // no whitespace in row
+                            String::new()
                         }
-                    };
-                    if trunc_len > 0 {
-                        curr_row.content.truncate(trunc_len);
-                        FileController::render_row(curr_row);
                     }
-                    self.file_ctrlr.insert_row(
-                        self.cursor_ctrlr.cursor_y + 1, 
-                        new_row_content
-                    );
-                    self.cursor_ctrlr.cursor_y += 1;
-                    self.cursor_ctrlr.cursor_x = self.file_ctrlr
-                        .get_editor_row(self.cursor_ctrlr.cursor_y).content.len();
                 }
+            };
+            if trunc_len > 0 {
+                curr_row.content.truncate(trunc_len);
+                FileController::render_row(curr_row);
             }
+            self.cursor_ctrlr.cursor_x = new_row_content.len();
+            self.cursor_ctrlr.cursor_y += 1;
+            self.file_ctrlr.insert_row(
+                self.cursor_ctrlr.cursor_y,
+                new_row_content 
+            );
         } else {
+            self.file_ctrlr
+                .get_editor_row_mut(self.cursor_ctrlr.cursor_y)
+                .insert_char(self.cursor_ctrlr.cursor_x, ch);
             self.cursor_ctrlr.cursor_x += 1;
         }
         self.dirty += 1;
@@ -304,22 +292,24 @@ impl Controllers {
                             if cursor_y >= self.file_ctrlr.count_rows() || cursor_x >= curr_row.content.len() {
                                 1
                             } else {
-                                curr_row.content[cursor_x..]
-                                    .split_whitespace()
-                                    .next()
-                                    .unwrap()
-                                    .len() + 1 // add one to put cursor in the next whitepsace
+                                match curr_row.content[cursor_x..].split_whitespace().next() {
+                                    None => 1,
+                                    Some(word) => {
+                                        word.len() + 1 // add one to put cursor in the next whitepsace
+                                    }
+                                }
                             }
                         }
                         KeyCode::Left => {
                             if cursor_y >= self.file_ctrlr.count_rows() || cursor_x == 0 {
                                 1
                             } else {
-                                curr_row.content[0..cursor_x]
-                                    .split_whitespace()
-                                    .last()
-                                    .unwrap()
-                                    .len() + 1 // add one to put cursor in the next whitepsace
+                                match curr_row.content[0..cursor_x].split_whitespace().last() {
+                                    None => 1,
+                                    Some(word) => {
+                                        word.len() + 1 // add one to put cursor in the next whitepsace
+                                    }
+                                }
                             }
                         }
                         _ => 1
