@@ -133,7 +133,7 @@ impl FileController {
         self.rows.insert(row_idx, new_row);
     }
 
-    fn save_file(&self, filename: &PathBuf) -> io::Result<usize> {
+    pub fn save_file(&self, filename: &PathBuf) -> io::Result<usize> {
         let mut file = fs::OpenOptions::new().write(true).create(true).open(filename)?;
         let contents: String = self.rows
             .iter()

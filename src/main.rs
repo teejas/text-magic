@@ -1,5 +1,5 @@
 use editor::Editor;
-use crossterm::{execute, terminal};
+use crossterm::{execute, cursor, terminal};
 
 mod editor;
 
@@ -12,6 +12,10 @@ impl Drop for CleanUp {
             std::io::stdout(), 
             terminal::Clear(terminal::ClearType::All)
         ).expect("Error clearing the screen on exit");
+        execute!(
+            std::io::stdout(), 
+            cursor::MoveTo(0,0),
+        ).expect("Error resetting the cursor to (0,0) on exit");
     }
 }
 

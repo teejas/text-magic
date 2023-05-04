@@ -24,16 +24,26 @@ pub struct Controllers {
     quit_attempts: u64,
 }
 
-// impl Drop for Controllers {
-//     fn drop(&mut self) {
-//         if self.is_dirty() // if dirty and not intentionally quit, save a .tmp file
-//             && self.quit_attempts < MAX_QUIT_ATTEMPTS { 
-//             self.file_ctrlr
-//                 .save_file(&PathBuf::from("/tm-crashed.tmp"))
-//                 .expect("Failed to save emergency .tmp file on crash");
-//         }
-//     }
-// }
+impl Drop for Controllers {
+    fn drop(&mut self) {
+        if self.is_dirty() && self.quit_attempts < MAX_QUIT_ATTEMPTS { // if dirty and not intentionally quit, save a .tmp file
+            match &self.file_ctrlr.filename {
+                Some(name) => {
+                    let mut new_filename = name.clone();
+                    new_filename.set_extension("tmp");
+                    self.file_ctrlr
+                        .save_file(&new_filename)
+                        .expect("Failed to save emergency .tmp file on crash");
+                },
+                None => {
+                    self.file_ctrlr
+                        .save_file(&PathBuf::from("./tm-crashed.tmp"))
+                        .expect("Failed to save emergency .tmp file on crash");
+                }
+            }
+        }
+    }
+}
 
 impl Controllers {
     pub fn new() -> Self {
@@ -162,7 +172,7 @@ impl Controllers {
                 .get_editor_row_mut(self.cursor_ctrlr.cursor_y);
             curr_row.insert_char(self.cursor_ctrlr.cursor_x, ch);
             let mut trunc_len = 0;
-            let new_row_content = if ch == ' ' {
+            let new_row_content = if ch == ' ' || ch == '\t' {
                 String::new()
             } else {
                 match curr_row.content.split_whitespace().last() {
@@ -170,7 +180,7 @@ impl Controllers {
                     Some(this) => {
                         if this.len() < curr_row.len() {
                             trunc_len = curr_row.len() - this.len();
-                            this.to_string()
+                            String::from(this)
                         } else { // no whitespace in row
                             String::new()
                         }
@@ -277,8 +287,8 @@ impl Controllers {
                 }
             }
             _ => {
-                let (cursor_x, cursor_y) = self.cursor_ctrlr.pos();
-                if cursor_y >= self.file_ctrlr.count_rows() || shift != KeyModifiers::SHIFT {
+                if self.cursor_ctrlr.cursor_y >= self.file_ctrlr.count_rows() 
+                    || shift != KeyModifiers::SHIFT {
                     self.cursor_ctrlr.move_cursor(
                         key, &self.file_ctrlr
                     );
@@ -289,25 +299,27 @@ impl Controllers {
                     let move_len = match key {
                         KeyCode::Up | KeyCode::Down => 5,
                         KeyCode::Right => {
-                            if cursor_y >= self.file_ctrlr.count_rows() || cursor_x >= curr_row.content.len() {
+                            if self.cursor_ctrlr.cursor_y >= self.file_ctrlr.count_rows() 
+                                || self.cursor_ctrlr.cursor_x >= curr_row.content.len() {
                                 1
                             } else {
-                                match curr_row.content[cursor_x..].split_whitespace().next() {
+                                match curr_row.content[self.cursor_ctrlr.cursor_x..].split_whitespace().next() {
                                     None => 1,
                                     Some(word) => {
-                                        word.len() + 1 // add one to put cursor in the next whitepsace
+                                        word.len() + 1 // add one to put cursor in the next whitespace
                                     }
                                 }
                             }
                         }
                         KeyCode::Left => {
-                            if cursor_y >= self.file_ctrlr.count_rows() || cursor_x == 0 {
+                            if self.cursor_ctrlr.cursor_y >= self.file_ctrlr.count_rows() 
+                                || self.cursor_ctrlr.cursor_x == 0 {
                                 1
                             } else {
-                                match curr_row.content[0..cursor_x].split_whitespace().last() {
+                                match curr_row.content[0..self.cursor_ctrlr.cursor_x].split_whitespace().last() {
                                     None => 1,
                                     Some(word) => {
-                                        word.len() + 1 // add one to put cursor in the next whitepsace
+                                        word.len() + 1 // add one to put cursor in the next whitespace
                                     }
                                 }
                             }
