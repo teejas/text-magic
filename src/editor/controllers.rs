@@ -26,7 +26,7 @@ pub struct Controllers {
 
 impl Drop for Controllers {
     fn drop(&mut self) {
-        if self.is_dirty() && self.quit_attempts < MAX_QUIT_ATTEMPTS { // if dirty and not intentionally quit, save a .tmp file
+        if self.dirty > 0 && self.quit_attempts < MAX_QUIT_ATTEMPTS { // if dirty and not intentionally quit, save a .tmp file
             match &self.file_ctrlr.filename {
                 Some(name) => {
                     let mut new_filename = name.clone();
@@ -64,7 +64,8 @@ impl Controllers {
         for i in 0..self.cursor_ctrlr.editor_height {
             let file_row = self.cursor_ctrlr.row_offset + i;
             if file_row >= self.file_ctrlr.count_rows() {
-                if self.file_ctrlr.filename.is_none() && i == self.cursor_ctrlr.editor_height / 4 {
+                if self.file_ctrlr.filename.is_none() && self.dirty < 10
+                    && i == self.cursor_ctrlr.editor_height / 4 {
                     let welcome = format!("Text Magic editor -- Version {}", VERSION);
                     let len = cmp::min(welcome.len(), self.cursor_ctrlr.editor_width);
                     let mut padding = (self.cursor_ctrlr.editor_width - welcome.len()) / 2;
@@ -345,12 +346,8 @@ impl Controllers {
         self.status_msg.set_message(s);
     }
 
-    pub fn is_dirty(&self) -> bool {
-        self.dirty > 0
-    }
-
     pub fn attempt_to_quit(&mut self) -> bool {
-        if self.is_dirty() && self.quit_attempts < MAX_QUIT_ATTEMPTS {
+        if self.dirty > 0 && self.quit_attempts < MAX_QUIT_ATTEMPTS {
             self.set_status_msg(
                 format!(
                     "WARNING! File has unsaved changes. \
