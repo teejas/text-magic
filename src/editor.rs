@@ -112,7 +112,7 @@ impl Editor {
             }=> {
                 if !self.ctrlrs.loaded_from_file() {
                     let filepath = prompt!(&mut self.ctrlrs, "Save as: {}").map(|it| it.into());
-                    if filepath == None {
+                    if filepath.is_none() {
                         self.ctrlrs.set_status_msg("Save aborted!".into());
                         return Ok(true)
                     }

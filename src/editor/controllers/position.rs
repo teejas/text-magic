@@ -26,8 +26,8 @@ impl CursorController {
             cursor_x: 0,
             cursor_y: 0,
             editor_height: win_size.1,
-            editor_width: if win_size.0 > 100 { // if editor is too wide, divide in half
-                win_size.0 / 2 + 1
+            editor_width: if win_size.0 > 100 { // if editor is too wide, set to 100 cols
+                100
             } else { 
                 win_size.0 
             },

@@ -24,6 +24,17 @@ pub struct Controllers {
     quit_attempts: u64,
 }
 
+// impl Drop for Controllers {
+//     fn drop(&mut self) {
+//         if self.is_dirty() // if dirty and not intentionally quit, save a .tmp file
+//             && self.quit_attempts < MAX_QUIT_ATTEMPTS { 
+//             self.file_ctrlr
+//                 .save_file(&PathBuf::from("/tm-crashed.tmp"))
+//                 .expect("Failed to save emergency .tmp file on crash");
+//         }
+//     }
+// }
+
 impl Controllers {
     pub fn new() -> Self {
         let win_size = terminal::size()
@@ -220,7 +231,7 @@ impl Controllers {
         }
         match shift {
             KeyModifiers::SHIFT => {
-                self.delete_word()
+                self.delete_prev_word()
             }
             _ => {
                 let row = self
@@ -240,9 +251,9 @@ impl Controllers {
         }
     }
 
-    fn delete_word(&mut self) {
+    fn delete_prev_word(&mut self) { // deletes word in same row but behind the cursor_x, uses same logic as SHIFT+LEFT
         let curr_row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y);
-        let move_len = if self.cursor_ctrlr.cursor_x <= 0 {
+        let move_len = if self.cursor_ctrlr.cursor_x == 0 {
             1
         } else {
             curr_row.content[0..self.cursor_ctrlr.cursor_x]
@@ -285,42 +296,39 @@ impl Controllers {
                     );
                     return
                 }
-                match shift {
-                    KeyModifiers::SHIFT => {
-                        let curr_row: &Row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y);
-                        let move_len = match key {
-                            KeyCode::Up | KeyCode::Down => 5,
-                            KeyCode::Right => {
-                                if cursor_y >= self.file_ctrlr.count_rows() || cursor_x >= curr_row.content.len() {
-                                    1
-                                } else {
-                                    curr_row.content[cursor_x..]
-                                        .split_whitespace()
-                                        .nth(0)
-                                        .unwrap()
-                                        .len() + 1 // add one to put cursor in the next whitepsace
-                                }
+                if shift == KeyModifiers::SHIFT {
+                    let curr_row: &Row = self.file_ctrlr.get_editor_row(self.cursor_ctrlr.cursor_y);
+                    let move_len = match key {
+                        KeyCode::Up | KeyCode::Down => 5,
+                        KeyCode::Right => {
+                            if cursor_y >= self.file_ctrlr.count_rows() || cursor_x >= curr_row.content.len() {
+                                1
+                            } else {
+                                curr_row.content[cursor_x..]
+                                    .split_whitespace()
+                                    .next()
+                                    .unwrap()
+                                    .len() + 1 // add one to put cursor in the next whitepsace
                             }
-                            KeyCode::Left => {
-                                if cursor_y >= self.file_ctrlr.count_rows() || cursor_x <= 0 {
-                                    1
-                                } else {
-                                    curr_row.content[0..cursor_x]
-                                        .split_whitespace()
-                                        .last()
-                                        .unwrap()
-                                        .len() + 1 // add one to put cursor in the next whitepsace
-                                }
-                            }
-                            _ => 1
-                        };
-                        for _ in 0..move_len {
-                            self.cursor_ctrlr.move_cursor(
-                                key, &self.file_ctrlr
-                            );
                         }
-                    },
-                    _ => {}
+                        KeyCode::Left => {
+                            if cursor_y >= self.file_ctrlr.count_rows() || cursor_x == 0 {
+                                1
+                            } else {
+                                curr_row.content[0..cursor_x]
+                                    .split_whitespace()
+                                    .last()
+                                    .unwrap()
+                                    .len() + 1 // add one to put cursor in the next whitepsace
+                            }
+                        }
+                        _ => 1
+                    };
+                    for _ in 0..move_len {
+                        self.cursor_ctrlr.move_cursor(
+                            key, &self.file_ctrlr
+                        );
+                    }
                 }
             }
         }
@@ -336,7 +344,7 @@ impl Controllers {
     }
 
     pub fn is_dirty(&self) -> bool {
-        if self.dirty > 0 { true } else { false }
+        self.dirty > 0
     }
 
     pub fn attempt_to_quit(&mut self) -> bool {
@@ -356,11 +364,7 @@ impl Controllers {
     }
 
     pub fn loaded_from_file(&self) -> bool {
-        if self.file_ctrlr.filename == None {
-            false
-        } else {
-            true
-        }
+        self.file_ctrlr.filename.is_some()
     }
 
     pub fn set_filename(&mut self, filename: Option<PathBuf>) {

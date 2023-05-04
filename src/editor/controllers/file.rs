@@ -133,19 +133,23 @@ impl FileController {
         self.rows.insert(row_idx, new_row);
     }
 
+    fn save_file(&self, filename: &PathBuf) -> io::Result<usize> {
+        let mut file = fs::OpenOptions::new().write(true).create(true).open(filename)?;
+        let contents: String = self.rows
+            .iter()
+            .map(|it| it.content.as_str())
+            .collect::<Vec<&str>>()
+            .join("\n");
+        file.set_len(contents.len() as u64)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(contents.as_bytes().len())
+    }
+
     pub fn save(&self) -> io::Result<usize> {
         match &self.filename {
             None => Err(io::Error::new(io::ErrorKind::Other, "No filename specified")),
             Some(name) => {
-                let mut file = fs::OpenOptions::new().write(true).create(true).open(name)?;
-                let contents: String = self.rows
-                    .iter()
-                    .map(|it| it.content.as_str())
-                    .collect::<Vec<&str>>()
-                    .join("\n");
-                file.set_len(contents.len() as u64)?;
-                file.write_all(contents.as_bytes())?;
-                Ok(contents.as_bytes().len())
+                self.save_file(name)
             }
         }
     }
