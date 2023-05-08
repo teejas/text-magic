@@ -1,7 +1,7 @@
+pub mod editor;
+
 use editor::Editor;
 use crossterm::{execute, cursor, terminal};
-
-mod editor;
 
 struct CleanUp;
 

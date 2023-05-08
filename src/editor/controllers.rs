@@ -1,3 +1,7 @@
+mod position;
+mod file;
+mod writing;
+
 use position::CursorController;
 use writing::{StatusMessage, WritingController};
 use file::{FileController, Row};
@@ -6,10 +10,6 @@ use std::io::Write;
 use crossterm::event::*;
 use crossterm::{cursor, queue, style, terminal};
 use std::path::PathBuf;
-
-mod position;
-mod file;
-mod writing;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_QUIT_ATTEMPTS: u64 = 3;

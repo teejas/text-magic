@@ -1,9 +1,9 @@
+pub mod controllers;
+
 use controllers::Controllers;
 use std::time;
 use crossterm::event::*;
 use crossterm::event;
-
-mod controllers;
 
 #[macro_export]
 macro_rules! prompt {
